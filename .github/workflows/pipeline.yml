@@ -3,12 +3,15 @@ name: CI/CD Pipeline
 on: push
 env:
   NODE_VERSION: "18.18.0"
+  FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
 jobs:
   hello-world:
     runs-on: ubuntu-latest
     steps:
       - name: Hello World step
         run: echo "Hello World!"
+
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -23,6 +26,7 @@ jobs:
         run: |
           npm ci
           npm run test
+
   build:
     name: Build
     needs: test
@@ -43,23 +47,28 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4.6.2
         with:
-         name: react-app-v${{ github.sha }}
-         path: build   
-  deploy-prod-simulation:
-      name: Simulate deploy to prod
-      needs: build
-      runs-on: ubuntu-latest
-      steps:
-        - name: Checkout code
-          uses: actions/checkout@v2
-        - name: Deploy with Node.js ${{ env.NODE_VERSION }}
-          uses: actions/setup-node@v1
-          with:
-            node-version: ${{ env.NODE_VERSION }}
-        - name: Download build artifact
-          uses: actions/download-artifact@v4.2.1
-          with:
-            name: react-app-v${{ github.sha }}
-            path: build
-        - name: Deploy to prod environment
-          run: npm run deploy:simulate -- production
+          name: react-app-v${{ github.sha }}
+          path: build
+
+  deploy-prod-firebase:
+    name: Deploy to prod on Firebase
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Deploy with Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Download build artifact
+        uses: actions/download-artifact@v4.2.1
+        with:
+          name: react-app-v${{ github.sha }}
+          path: build
+      - name: Deploy to prod environment on Firebase
+        uses: w9jds/firebase-action@master
+        with:
+          args: deploy --only hosting
+
+  FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
